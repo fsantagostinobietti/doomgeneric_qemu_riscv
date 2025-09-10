@@ -407,6 +407,7 @@ static boolean DirIsFile(char *path, char *filename)
 
 static char *CheckDirectoryHasIWAD(char *dir, char *iwadname)
 {
+    printf("CheckDirectoryHasIWAD: dir [%s], iwadname [%s]\n", dir, iwadname);
     char *filename; 
 
     // As a special case, the "directory" may refer directly to an

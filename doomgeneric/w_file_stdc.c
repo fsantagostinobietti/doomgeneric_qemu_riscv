@@ -17,6 +17,7 @@
 //
 
 #include <stdio.h>
+#include <string.h>
 
 #include "m_misc.h"
 #include "w_file.h"
@@ -30,7 +31,18 @@ typedef struct
 
 extern wad_file_class_t stdc_wad_file;
 
-static wad_file_t *W_StdC_OpenFile(char *path)
+
+// doom1.o 
+extern unsigned char _binary_doom1_wad_start[];
+extern unsigned char _binary_doom1_wad_end[];
+extern unsigned char _binary_doom1_wad_size[];
+
+// aliases
+uint8_t *doom1_wad_start = _binary_doom1_wad_start;
+unsigned long doom1_wad_sz = (unsigned long)_binary_doom1_wad_size;
+
+
+/* static wad_file_t *W_StdC_OpenFile(char *path)
 {
     stdc_wad_file_t *result;
     FILE *fstream;
@@ -51,9 +63,27 @@ static wad_file_t *W_StdC_OpenFile(char *path)
     result->fstream = fstream;
 
     return &result->wad;
+} */
+
+static wad_file_t *W_StdC_OpenFile(char *path) {
+    printf("W_StdC_OpenFile: path [%s]\n", path);
+
+    stdc_wad_file_t *result;
+    // Create a new stdc_wad_file_t to hold the file handle.
+
+    result = Z_Malloc(sizeof(stdc_wad_file_t), PU_STATIC, 0);
+    result->wad.file_class = &stdc_wad_file;
+    result->wad.mapped = NULL;
+    result->wad.length = doom1_wad_sz;
+    result->fstream = NULL; // no fstream since already in memory
+
+    return &result->wad;
 }
 
-static void W_StdC_CloseFile(wad_file_t *wad)
+
+
+
+/* static void W_StdC_CloseFile(wad_file_t *wad)
 {
     stdc_wad_file_t *stdc_wad;
 
@@ -61,12 +91,25 @@ static void W_StdC_CloseFile(wad_file_t *wad)
 
     fclose(stdc_wad->fstream);
     Z_Free(stdc_wad);
+} */
+
+static void W_StdC_CloseFile(wad_file_t *wad)
+{
+    printf("W_StdC_CloseFile\n");
 }
 
 // Read data from the specified position in the file into the 
 // provided buffer.  Returns the number of bytes read.
 
 size_t W_StdC_Read(wad_file_t *wad, unsigned int offset,
+                   void *buffer, size_t buffer_len)
+{
+    //printf("W_StdC_Read\n");
+    memcpy(buffer, doom1_wad_start+offset, buffer_len);
+    return buffer_len;
+}
+
+/* size_t W_StdC_Read(wad_file_t *wad, unsigned int offset,
                    void *buffer, size_t buffer_len)
 {
     stdc_wad_file_t *stdc_wad;
@@ -83,7 +126,7 @@ size_t W_StdC_Read(wad_file_t *wad, unsigned int offset,
     result = fread(buffer, 1, buffer_len, stdc_wad->fstream);
 
     return result;
-}
+} */
 
 
 wad_file_class_t stdc_wad_file = 

@@ -65,6 +65,9 @@ void M_MakeDirectory(char *path)
 
 boolean M_FileExists(char *filename)
 {
+    if ( strcmp(filename, "doom1.wad") == 0)
+        return true;
+
     FILE *fstream;
 
     fstream = fopen(filename, "r");
@@ -501,6 +504,7 @@ int M_vsnprintf(char *buf, size_t buf_len, const char *s, va_list args)
         result = buf_len - 1;
     }
 
+    //printf("M_vsnprintf: [%s]\n", buf);
     return result;
 }
 

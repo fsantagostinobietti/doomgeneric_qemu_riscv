@@ -72,6 +72,7 @@ static atexit_listentry_t *exit_funcs = NULL;
 
 void I_AtExit(atexit_func_t func, boolean run_on_error)
 {
+    printf("I_AtExit\n");
     atexit_listentry_t *entry;
 
     entry = malloc(sizeof(*entry));
@@ -94,6 +95,7 @@ void I_Tactile(int on, int off, int total)
 
 static byte *AutoAllocMemory(int *size, int default_ram, int min_ram)
 {
+    printf("AutoAllocMemory: default_ram [%d], min_ram [%d]\n", default_ram, min_ram);
     byte *zonemem;
 
     // Allocate the zone memory.  This loop tries progressively smaller
@@ -165,6 +167,7 @@ byte *I_ZoneBase (int *size)
 
 void I_PrintBanner(char *msg)
 {
+    printf("I_PrintBanner\n");
     int i;
     int spaces = 35 - (strlen(msg) / 2);
 
@@ -322,6 +325,7 @@ static char *EscapeShellString(char *string)
 
 static int ZenityErrorBox(char *message)
 {
+    printf("ZenityErrorBox: message [%s]\n", message);
     int result;
     char *escaped_message;
     char *errorboxpath;
@@ -358,6 +362,7 @@ static boolean already_quitting = false;
 
 void I_Error (char *error, ...)
 {
+    printf("I_Error: error [%s]\n", error);
     char msgbuf[512];
     va_list argptr;
     atexit_listentry_t *entry;
@@ -456,16 +461,18 @@ void I_Error (char *error, ...)
 
 #else
     {
-        ZenityErrorBox(msgbuf);
+        //ZenityErrorBox(msgbuf);  // disable
     }
 #endif
 
-    // abort();
+    printf("I_Error: aborting\n");
+    abort();
 #if ORIGCODE
     SDL_Quit();
 
     exit(-1);
 #else
+    printf("I_Error: endless loop\n");
     while (true)
     {
     }

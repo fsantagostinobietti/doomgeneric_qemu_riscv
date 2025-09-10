@@ -86,6 +86,7 @@ unsigned int W_LumpNameHash(const char *s)
 // Increase the size of the lumpinfo[] array to the specified size.
 static void ExtendLumpInfo(int newnumlumps)
 {
+    printf("ExtendLumpInfo: newnumlumps [%d]\n", newnumlumps);
     lumpinfo_t *newlumpinfo;
     unsigned int i;
 
@@ -115,6 +116,7 @@ static void ExtendLumpInfo(int newnumlumps)
             int nextlumpnum = lumpinfo[i].next - lumpinfo;
             newlumpinfo[i].next = &newlumpinfo[nextlumpnum];
         }
+        printf("ExtendLumpInfo: lumpinfo[%d].name [%s]\n", i, newlumpinfo[i].name);
     }
 
     // All done.
@@ -138,6 +140,7 @@ static void ExtendLumpInfo(int newnumlumps)
 
 wad_file_t *W_AddFile (char *filename)
 {
+    printf("W_AddFile: filename [%s]\n", filename);
     wadinfo_t header;
     lumpinfo_t *lump_p;
     unsigned int i;
@@ -183,6 +186,7 @@ wad_file_t *W_AddFile (char *filename)
     {
     	// WAD file
         W_Read(wad_file, 0, &header, sizeof(header));
+        printf("header.identification [%c][%c][%c][%c]\n", header.identification[0], header.identification[1], header.identification[2], header.identification[3]);
 
 		if (strncmp(header.identification,"IWAD",4))
 		{
@@ -197,6 +201,7 @@ wad_file_t *W_AddFile (char *filename)
 		}
 
 		header.numlumps = LONG(header.numlumps);
+        printf("header.numlumps [%d]\n", header.numlumps);
 		header.infotableofs = LONG(header.infotableofs);
 		length = header.numlumps*sizeof(filelump_t);
 		fileinfo = Z_Malloc(length, PU_STATIC, 0);
@@ -220,6 +225,7 @@ wad_file_t *W_AddFile (char *filename)
 		lump_p->size = LONG(filerover->size);
 			lump_p->cache = NULL;
 		strncpy(lump_p->name, filerover->name, 8);
+        //printf("W_AddFile: lump_p->name [%s]\n", lump_p->name);
 
 			++lump_p;
 			++filerover;

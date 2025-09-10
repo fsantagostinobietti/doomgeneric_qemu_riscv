@@ -289,13 +289,20 @@ void HU_Init(void)
     int		i;
     int		j;
     char	buffer[9];
+    char    numstr[5];
 
     // load the heads-up font
     j = HU_FONTSTART;
     for (i=0;i<HU_FONTSIZE;i++)
     {
-	DEH_snprintf(buffer, 9, "STCFN%.3d", j++);
-	hu_font[i] = (patch_t *) W_CacheLumpName(buffer, PU_STATIC);
+        // convert j integer into a string of size 4 
+        // ex. j==5 -> numstr == '1005'
+        DEH_snprintf(numstr, 5, "%d", 1000+j);
+        
+        DEH_snprintf(buffer, 9, "STCFN%s", numstr+1); // skip leading '1' 
+        //printf("HU_Init: buffer [%s]\n", buffer);
+        j++;
+        hu_font[i] = (patch_t *) W_CacheLumpName(buffer, PU_STATIC);
     }
 
 }

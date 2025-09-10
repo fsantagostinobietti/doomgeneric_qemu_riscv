@@ -234,6 +234,7 @@ static void LoadResponseFile(int argv_index)
 
 void M_FindResponseFile(void)
 {
+    printf("M_FindResponseFile\n");
     int             i;
 
     for (i = 1; i < myargc; i++)

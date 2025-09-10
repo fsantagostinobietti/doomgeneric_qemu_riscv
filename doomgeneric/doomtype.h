@@ -62,7 +62,7 @@
 
 #include <inttypes.h>
 
-#ifdef __cplusplus
+/* #ifdef __cplusplus
 
 // Use builtin bool type with C++.
 
@@ -77,7 +77,11 @@ typedef enum
 	undef	= 0xFFFFFFFF
 } boolean;
 
-#endif
+#endif */
+
+// see https://blog.svgames.pl/article/the-little-bool-of-doom
+#include <stdbool.h>
+typedef int boolean;
 
 typedef uint8_t byte;
 

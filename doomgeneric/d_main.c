@@ -334,6 +334,7 @@ void D_Display (void)
 
 void D_BindVariables(void)
 {
+    printf("D_BindVariables\n");
     int i;
 
     M_ApplyPlatformDefaults();
@@ -423,6 +424,7 @@ void doomgeneric_Tick()
 //
 void D_DoomLoop (void)
 {
+    printf("D_DoomLoop\n");
     if (bfgedition &&
         (demorecording || (gameaction == ga_playdemo) || netgame))
     {
@@ -1066,6 +1068,7 @@ void PrintGameVersion(void)
 
 static void D_Endoom(void)
 {
+    printf("D_Endoom\n");
     byte *endoom;
 
     // Don't show ENDOOM if we have it disabled, or we're running
@@ -1162,6 +1165,7 @@ static void LoadIwadDeh(void)
 //
 void D_DoomMain (void)
 {
+    printf("D_DoomMain\n");
     int p;
     char file[256];
     char demolumpname[9];
@@ -1169,7 +1173,7 @@ void D_DoomMain (void)
     int numiwadlumps;
 #endif
 
-    I_AtExit(D_Endoom, false);
+    // I_AtExit(D_Endoom, false);  // removed 
 
     // print banner
 

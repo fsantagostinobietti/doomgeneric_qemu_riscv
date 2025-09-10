@@ -131,7 +131,7 @@ void Z_Free (void* ptr)
     block = (memblock_t *) ( (byte *)ptr - sizeof(memblock_t));
 
     if (block->id != ZONEID)
-	I_Error ("Z_Free: freed a pointer without ZONEID");
+	    I_Error ("Z_Free: freed a pointer without ZONEID");
 		
     if (block->tag != PU_FREE && block->user != NULL)
     {
