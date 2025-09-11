@@ -44,7 +44,7 @@ void DG_Init()
 
 void DG_DrawFrame()
 {
-	printf("DG_DrawFrame\n");
+	//printf("DG_DrawFrame\n");
 	draw_frame((uint32_t*)DG_ScreenBuffer, &fb);
 }
 
@@ -118,8 +118,8 @@ int DG_GetKey(int* pressed, unsigned char* doomKey)
 		return 0; // no key event detected
 	}
 
-	int ch; // = kreadchar();
-	while ( (ch = kreadchar()) != -1 ) {} // consider last char in uart buffer 
+	int ch = kreadchar();
+	while ( kreadchar()!=-1 ) {} // remove remaining chars from buffer 
 
 	if (ch == -1) { // no key
 		if (pressed_key!=0) {
