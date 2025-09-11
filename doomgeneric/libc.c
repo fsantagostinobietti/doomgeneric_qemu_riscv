@@ -136,6 +136,7 @@ int rename(const char *oldname, const char *newname) {
 
 int puts(const char *string) {
     kprint((uint8_t *)string);
+    kprint("\n");
     return 0;
 }
 
@@ -192,7 +193,9 @@ int strncmp(const char *s1, const char *s2, size_t count) {
 extern uint64_t _stack_top;
 uint64_t heap_start = (uint64_t)&_stack_top;
 
-void free(void *ptr) {}
+void free(void *ptr) {
+    printf("free() ignored!\n");
+}
 
 void *malloc(size_t size) {
     void *addr = (void*) heap_start;

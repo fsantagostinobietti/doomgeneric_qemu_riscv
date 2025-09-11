@@ -167,7 +167,7 @@ byte *I_ZoneBase (int *size)
 
 void I_PrintBanner(char *msg)
 {
-    printf("I_PrintBanner\n");
+    //printf("I_PrintBanner\n");
     int i;
     int spaces = 35 - (strlen(msg) / 2);
 
