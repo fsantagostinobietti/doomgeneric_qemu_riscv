@@ -7,6 +7,7 @@
  */
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include "uart_serial.h"
 
 
@@ -175,34 +176,59 @@ void kprint_ui(uint64_t inp) {
     kprint(str);
 }
 
+int power(int base, unsigned int exp) {
+    int result = 1;
+    while ( exp-- > 0 )
+        result *= base;
+    return result;
+ }
+
 int kvsnprintf(char *buffer, size_t buffer_size, const char *format, va_list arg) {
-  int i = 0;
+  int i = 0; // buffer index
+  char field_fmt[10]; // ex. %3.2d
+  int j = 0;  // field_fmt index
+  int is_field_fmt = 0;  // 1 when populating field_fmt buffer
   while (*format && i<buffer_size) {
-    if (*format == '%') {
-      ++format;
-      if (!*format)
-	    return -1;
+	if (*format == '%') {
+		is_field_fmt = 1;
+		// skip '%' and test end-of-string
+		++format;
+		if (!*format)
+			return -1;
+	}
+    if (is_field_fmt) {
+	  is_field_fmt = 0;
       switch (*format) {
       	case 'd':
       	case 'i':
 			{
 				int n = va_arg(arg, int);
+				// minus sign
 				if (n < 0) {
 					buffer[i++] = '-';
 					n = ~n + 1;
 				}
-				char lsh = '0' + n % 10;
-				n /= 10;
+
 				char buf[9];
-				char *p_buf = buf;
-				while (n) {
-					*p_buf++ = '0' + n % 10;
-					n /= 10;
+				char * p_buf = NULL;
+				// '0' padding if needed
+				if (field_fmt[0]=='.') { // starts with '.' such as ".3"
+					int pad_len = atoi(&field_fmt[1]);
+					if ( n < power(10, pad_len) ) {
+						// hack: example n=4, pad_len=3 --> 4 + 10^3 = 1004 --> "1004" --> "004"
+						uitoa(buf, n + power(10, pad_len), 10);
+						p_buf = buf;
+						p_buf++; // skip leading '1' digit
+					}
+				} 
+				if (p_buf == NULL) {
+					uitoa(buf, n, 10);
+					p_buf = buf;
 				}
-				while (p_buf != buf) {
-					buffer[i++] = (*--p_buf);
-				}
-				buffer[i++] = lsh;
+
+				// copy number in 'buffer'
+				while (*p_buf != 0)
+					buffer[i++] = *(p_buf++);
 			}
 			break;
       	case 'u':
@@ -301,12 +327,18 @@ int kvsnprintf(char *buffer, size_t buffer_size, const char *format, va_list arg
 			buffer[i++] = '%';
 			break;
       	default:
-			kprintf("kvsnprintf: WARNING unsuppoerted format [%%%s]\n", format);
-			buffer[i++] = '%';
-			buffer[i++] = (*format);
+			//kprintf("kvsnprintf: WARNING unsuppoerted format [%%%s]\n", format);
+			is_field_fmt = 1;
+			field_fmt[j++] = (*format);
+			field_fmt[j] = 0;
       }
     } else {
       buffer[i++] = (*format);
+	}
+	if (!is_field_fmt){
+		// reset field_fmt
+		j = 0;
+		field_fmt[j] = 0;
 	}
     ++format;
   }
