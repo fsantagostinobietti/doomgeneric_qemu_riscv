@@ -1173,7 +1173,7 @@ void D_DoomMain (void)
     int numiwadlumps;
 #endif
 
-    // I_AtExit(D_Endoom, false);  // removed 
+    I_AtExit(D_Endoom, false);
 
     // print banner
 
