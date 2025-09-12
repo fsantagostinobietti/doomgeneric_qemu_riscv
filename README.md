@@ -1,67 +1,49 @@
-# doomgeneric
-The purpose of doomgeneric is to make porting Doom easier.
-Of course Doom is already portable but with doomgeneric it is possible with just a few functions.
+# Doomgeneric porting to RISCV
+__NB__: The original Doomgeneric README is available [here](README_ORIG.md).
 
-To try it you will need a WAD file (game data). If you don't own the game, shareware version is freely available (doom1.wad).
+This personal project aims to port Doom to a virtualized RISC-V system, specifically targeting the QEMU virt machine.
 
-# porting
-Create a file named doomgeneric_yourplatform.c and just implement these functions to suit your platform.
-* DG_Init
-* DG_DrawFrame
-* DG_SleepMs
-* DG_GetTicksMs
-* DG_GetKey
+The goal is to run Doom on a minimal, bare-metal virtual environment without relying on an underlying operating system. In essence, Doom is being developed as a [Unikernel](https://en.wikipedia.org/wiki/Unikernel) application, custom-tailored for the QEMU virt platform.
 
-|Functions            |Description|
-|---------------------|-----------|
-|DG_Init              |Initialize your platfrom (create window, framebuffer, etc...).
-|DG_DrawFrame         |Frame is ready in DG_ScreenBuffer. Copy it to your platform's screen.
-|DG_SleepMs           |Sleep in milliseconds.
-|DG_GetTicksMs        |The ticks passed since launch in milliseconds.
-|DG_GetKey            |Provide keyboard events.
-|DG_SetWindowTitle    |Not required. This is for setting the window title as Doom sets this from WAD file.
+# Qemu virt integration
 
-### main loop
-At start, call doomgeneric_Create().
+In order to interact with virt machine simple drivers have been developed for:
+* [ramfb](https://wiki.osdev.org/Ramfb) - a basic framebuffer for graphical output
+* [UART serial](https://wiki.osdev.org/RISC-V_Meaty_Skeleton_with_QEMU_virt_board#src/uart/uart.h) - for reading and writing characters via the console
+* ["test" syscon-compatible device](https://wiki.osdev.org/RISC-V_Meaty_Skeleton_with_QEMU_virt_board#src/syscon/syscon.h) - used to trigger system shutdown
+* CLINT mtime - read/write register that counts the number of cycles from the realtime clock
 
-In a loop, call doomgeneric_Tick().
+# Build
+A cross-compiler for the RISC-V architecture is required.
 
-In simplest form:
-```
-int main(int argc, char **argv)
-{
-    doomgeneric_Create(argc, argv);
+On macOS, you can install it using Homebrew:
+```shell
+$ brew install riscv64-elf-gcc
 
-    while (1)
-    {
-        doomgeneric_Tick();
-    }
-    
-    return 0;
-}
+# Optional: for debug with gdb
+$ brew install riscv64-elf-gdb
 ```
 
-# sound
-Sound is much harder to implement! If you need sound, take a look at SDL port. It fully supports sound and music! Where to start? Define FEATURE_SOUND, assign DG_sound_module and DG_music_module.
+To build unikernel executable:
+```shell
+$ make
+```
+# Running Doom
+QEMU emulator is needed. On macOS, install it via:
+```shell
+$ brew install qemu
+```
 
-# platforms
-Ported platforms include Windows, X11, SDL, emscripten. Just look at (doomgeneric_win.c, doomgeneric_xlib.c, doomgeneric_sdl.c).
-Makefiles provided for each platform.
+To run Doom on QEMU:
+```shell
+$ bash qemu-run.sh
+```
 
-## emscripten
-You can try it directly here:
-https://ozkl.github.io/doomgeneric/
+# Limitations
+* keyboard interaction with user is actually **only** emulated using console serial input. It requires to keep costantly focus on console window and user can press just one key at a time during the game!!!
+* no audio is supported
 
-emscripten port is based on SDL port, so it supports sound and music! For music, timidity backend is used.
-
-## Windows
-![Windows](screenshots/windows.png)
-
-## X11 - Ubuntu
-![Ubuntu](screenshots/ubuntu.png)
-
-## X11 - FreeBSD
-![FreeBSD](screenshots/freebsd.png)
-
-## SDL
-![SDL](screenshots/sdl.png)
+# TODOs
+* write a minimal driver for virtio-keyboard
+* code refactoring
+* add audio support (they say it's hard to implement)
