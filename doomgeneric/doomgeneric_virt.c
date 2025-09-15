@@ -4,6 +4,7 @@
 #include "rtc.h"
 #include "fb.h"
 #include "qemu_dma.h"
+#include "virtio_keyboard.h"
 
 #include <stdio.h>
 
@@ -40,6 +41,16 @@ void DG_Init()
   printf("DG_Init: setup ramfb successfull\n");
 
   printf("DG_Init: DG_ScreenBuffer2 [%p]\n", DG_ScreenBuffer);
+
+  int res =virtio_keyboard_init();
+  if (res <0 ) {
+	printf("DG_Init: error during virtio keyboad init [%d] - abort\n", res);
+	poweroff();
+	return;
+  }
+  printf("DG_Init: virtio keyboad init successfully\n");
+
+
 }
 
 void DG_DrawFrame()
@@ -61,114 +72,35 @@ uint32_t DG_GetTicksMs()
 	return ticks / 10000;
 }
 
+
 // convert console extended char into doomkey
-unsigned char convert_to_doomkey(int ch) {
+unsigned char convert_to_doomkey(int code) {
 	unsigned char key;
-	switch (ch)
+	switch (code)
 	{
-	case 32: // SPACE (use objects)
-		key = KEY_USE;
-		break;
-	case 119: // 'w' (up)
-		key = KEY_UPARROW;
-		break;
-	case 115: // 's' (down)
-		key = KEY_DOWNARROW;
-		break;
-	case 97: // 'a' (left)
-		key = KEY_LEFTARROW;
-		break;
-	case 100: // 'd' (right)
-		key = KEY_RIGHTARROW;
-		break;
-	case 45: // '-' (fire)
-		key = KEY_FIRE;
-		break;
-	
+		
+	// override keys
+	/* case 1: // ESC
+		key = KEY_ESCAPE;
+		break; */
+
 	default:
-		key = ch;
+		key = at_to_doom[code];
 		break;
 	}
 	return key;
 }
 
-// global - current pressed doomkey value
-int pressed_key = 0;
-int next_pressed_key = 0;
-uint64_t received_char_ticks = 0;
-
 int DG_GetKey(int* pressed, unsigned char* doomKey)
 {
-	//printf("DG_GetKey\n");
-	if ( next_pressed_key != 0 ) { // unprocessed event found
-		*pressed = 1;
-		*doomKey = next_pressed_key;
-		printf("DG_GetKey: pressed doomkey value [%d]\n", *doomKey);
-		// store doomkey pressed value
-		pressed_key = *doomKey;
-		// start ticker
-		received_char_ticks = kmtime();
-
-		next_pressed_key = 0;
-		return 1;
-	}
-
-	if ( received_char_ticks != 0 && (kmtime()-received_char_ticks) < 80*10000 ) { // delta < 80 ms
-		// do nothing
+	struct virtio_input_event key_event = virtio_keyboard_read_event();
+	if (key_event.type == VirtioInputEvNone)
 		return 0; // no key event detected
-	}
-
-	int ch = kreadchar();
-	while ( kreadchar()!=-1 ) {} // remove remaining chars from buffer 
-
-	if (ch == -1) { // no key
-		if (pressed_key!=0) {
-			printf("DG_GetKey: release doomkey value [%d]\n", pressed_key);
-			*pressed = 0;
-			*doomKey = pressed_key;
-			// reset pressed key
-			pressed_key = 0;
-			// reset ticks time of pressed event
-			received_char_ticks = 0;
-			return 1;  // key released event detected
-		}
-		return 0; // no key event detected
-	}	
-    printf("DG_GetKey: key value [%d]\n", ch);
-	
-	unsigned char key = convert_to_doomkey(ch);
-	
-	if (key == pressed_key) { // key already pressed
-		printf("DG_GetKey: already pressed doomkey [%d]\n", key);
-		received_char_ticks = kmtime();  // restart ticker
-		return 0; // no event
-	}
-
-	// TODO handle key != pressed_key when pressed_key != 0
-	if (pressed_key != 0) {
-		printf("DG_GetKey: release doomkey value [%d]\n", pressed_key);
-		*pressed = 0;
-		*doomKey = pressed_key;
-		// reset pressed key
-		pressed_key = 0;
-		// reset ticks time of pressed event
-		received_char_ticks = 0;
-
-		// store next pressed doomkey
-		next_pressed_key = key;
-		return 1;  // key released event detected
-	}
-	//printf("DG_GetKey: ERROR unhandled 'pressed_key != 0' condition\n");
-
-	*pressed = 1;
-	*doomKey = key;
-	printf("DG_GetKey: pressed doomkey value [%d]\n", *doomKey);
-	// store doomkey pressed value
-	pressed_key = *doomKey;
-	// start ticker
-	received_char_ticks = kmtime();
-
-	return 1; // key pressed event detected
+	unsigned char key = convert_to_doomkey(key_event.code);
+	printf("DG_GetKey: key_event.code [%d] -> doomkey [%d], key_event.value [%d]\n", key_event.code, key, key_event.value);
+	*doomKey = key; //convert_to_doomkey(key_event.code);
+	*pressed = key_event.value;
+	return 1; // key event detected
 }
 
 void DG_SetWindowTitle(const char * title)
@@ -186,7 +118,6 @@ int main(int argc, char **argv)
         doomgeneric_Tick();
     }
     
-
 	/* printf("poweroff\n");
 	poweroff(); */
     return 0;

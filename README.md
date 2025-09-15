@@ -12,6 +12,7 @@ In order to interact with virt machine simple drivers have been developed for:
 * [UART serial](https://wiki.osdev.org/RISC-V_Meaty_Skeleton_with_QEMU_virt_board#src/uart/uart.h) - for reading and writing characters via the console
 * ["test" syscon-compatible device](https://wiki.osdev.org/RISC-V_Meaty_Skeleton_with_QEMU_virt_board#src/syscon/syscon.h) - used to trigger system shutdown
 * CLINT mtime - read/write register that counts the number of cycles from the realtime clock
+* Virtio Keyboard - read key pressed/released 
 
 # Build
 A cross-compiler for the RISC-V architecture is required.
@@ -39,11 +40,14 @@ To run Doom on QEMU:
 $ bash qemu-run.sh
 ```
 
+## Control Keys
+![Doom Keys](screenshots/Doom_keys.png)
+
+
 # Limitations
-* keyboard interaction with user is actually **only** emulated using console serial input. It requires to keep costantly focus on console window and user can press just one key at a time during the game!!!
 * no audio is supported
+* Game uses 100% of Qemu cpu
 
 # TODOs
-* write a minimal driver for virtio-keyboard
 * code refactoring
 * add audio support (they say it's hard to implement)
