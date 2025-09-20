@@ -5,6 +5,7 @@
 #include "fb.h"
 #include "qemu_dma.h"
 #include "virtio_keyboard.h"
+#include "virt_clint.h"
 
 #include <stdio.h>
 
@@ -40,17 +41,19 @@ void DG_Init()
     printf("DG_Init: error setting up ramfb \n");
   printf("DG_Init: setup ramfb successfull\n");
 
-  printf("DG_Init: DG_ScreenBuffer2 [%p]\n", DG_ScreenBuffer);
-
   int res =virtio_keyboard_init();
-  if (res <0 ) {
+  if (res < 0 ) {
 	printf("DG_Init: error during virtio keyboad init [%d] - abort\n", res);
 	poweroff();
 	return;
   }
   printf("DG_Init: virtio keyboad init successfully\n");
 
-
+  if (init_interrupts() < 0) {
+	poweroff();
+	return;
+  }
+  printf("DG_Init: interrupts setup completed successfully\n");
 }
 
 void DG_DrawFrame()
@@ -62,7 +65,8 @@ void DG_DrawFrame()
 void DG_SleepMs(uint32_t ms)
 {
 	//printf("DG_SleepMs: ms [%d]\n", ms);
-	kusleep(ms * 1000);
+	//kusleep(ms * 1000);
+	sleep_us(ms * 1000);
 }
 
 uint32_t DG_GetTicksMs()
@@ -97,8 +101,8 @@ int DG_GetKey(int* pressed, unsigned char* doomKey)
 	if (key_event.type == VirtioInputEvNone)
 		return 0; // no key event detected
 	unsigned char key = convert_to_doomkey(key_event.code);
-	printf("DG_GetKey: key_event.code [%d] -> doomkey [%d], key_event.value [%d]\n", key_event.code, key, key_event.value);
-	*doomKey = key; //convert_to_doomkey(key_event.code);
+	//printf("DG_GetKey: key_event.code [%d] -> doomkey [%d], key_event.value [%d]\n", key_event.code, key, key_event.value);
+	*doomKey = key;
 	*pressed = key_event.value;
 	return 1; // key event detected
 }
