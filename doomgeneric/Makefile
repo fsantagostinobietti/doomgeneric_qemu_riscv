@@ -17,6 +17,9 @@ OBJCOPY=riscv64-elf-objcopy
 INCLUDES=libc/include/
 # -std=c99 
 CFLAGS=-ffreestanding -nostartfiles -nostdlib -nodefaultlibs
+# enable debug + optimization
+CFLAGS+=-g -Og
+#CFLAGS+=-O3
 # access memory above 2GB (0x80000000 address) with medany code model
 CFLAGS+=-mcmodel=medany 
 CFLAGS+=-DNORMALUNIX -DLINUX -DSNDSERV -D_DEFAULT_SOURCE # -DUSEASM
