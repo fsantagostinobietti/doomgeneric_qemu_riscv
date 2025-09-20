@@ -12,6 +12,7 @@ In order to interact with virt machine simple drivers have been developed for:
 * [UART serial](https://wiki.osdev.org/RISC-V_Meaty_Skeleton_with_QEMU_virt_board#src/uart/uart.h) - for reading and writing characters via the console
 * ["test" syscon-compatible device](https://wiki.osdev.org/RISC-V_Meaty_Skeleton_with_QEMU_virt_board#src/syscon/syscon.h) - used to trigger system shutdown
 * CLINT mtime - read/write register that counts the number of cycles from the realtime clock
+* CLINT interrupt - allows to implement sleep(ms) function without consuming 100% of cpu cycles
 * Virtio Keyboard - read key pressed/released 
 
 # Build
@@ -46,7 +47,7 @@ $ bash qemu-run.sh
 
 # Limitations
 * no audio is supported
-* Game uses 100% of Qemu cpu
+* ~~Game uses 100% of Qemu cpu~~
 
 # TODOs
 * code refactoring
