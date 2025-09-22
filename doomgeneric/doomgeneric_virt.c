@@ -37,8 +37,11 @@ void DG_Init()
   fb.fb_stride = fb_stride;
   fb.fb_size = fb_stride * fb_height;
   
-  if (ramfb_setup(&fb) != 0)
+  if (ramfb_setup(&fb) != 0){
     printf("DG_Init: error setting up ramfb \n");
+	poweroff();
+	return;
+  }
   printf("DG_Init: setup ramfb successfull\n");
 
   int res =virtio_keyboard_init();

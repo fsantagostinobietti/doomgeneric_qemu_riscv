@@ -56,7 +56,7 @@ struct VirtioDeviceRegs {
 };
 // sizeof(VirtioDeviceRegs) == 4096 == 0x1000
 
-struct VirtioDeviceRegs* virtio_mmio_devices = (struct VirtioDeviceRegs*) VIRTIO_MMIO;
+volatile struct VirtioDeviceRegs* virtio_mmio_devices = (struct VirtioDeviceRegs*) VIRTIO_MMIO;
 
 // Expected magic/version/vendors
 #define VIRTIO_MMIO_MAGIC_VALUE 0x74726976  // "virt"

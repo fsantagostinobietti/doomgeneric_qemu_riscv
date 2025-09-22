@@ -1,4 +1,5 @@
 #include "qemu_dma.h"
+#include "uart_serial.h"
 
 /* see https://github.com/qemu/qemu/blob/master/docs/specs/fw_cfg.rst#guest-side-dma-interface
 */
@@ -60,7 +61,7 @@ static uint16_t mmio_read32(uint64_t addr) {
 }
 
 static void qemu_cfg_dma_transfer(void *address, uint32_t length, uint32_t control) {
-    QemuCfgDmaAccess access = { .address = __builtin_bswap64((uint64_t)address), .length = __builtin_bswap32(length), .control = __builtin_bswap32(control) };
+    volatile QemuCfgDmaAccess access = { .address = __builtin_bswap64((uint64_t)address), .length = __builtin_bswap32(length), .control = __builtin_bswap32(control) };
 
     if (length == 0) {
         return;
@@ -93,6 +94,8 @@ int qemu_cfg_find_file() {
 
     uint32_t count, e, select;
     qemu_cfg_read_entry(&count, QEMU_CFG_FILE_DIR, sizeof(count));
+    if (count == 0)
+        kprintf("Error in getting QEMU_CFG_FILE_DIR count");
     count = __builtin_bswap32(count);
 
     for (select = 0, e = 0; e < count; e++) {
