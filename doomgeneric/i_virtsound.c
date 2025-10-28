@@ -44,14 +44,10 @@ struct audio_clip {
 
 #define NUM_CHANNELS 16
 
-#define NUM_MIDI_CHANNELS 16
-
 
 static boolean sound_initialized = false;
 
 static sfxinfo_t *channels_playing[NUM_CHANNELS];
-
-static int allegro_voices[NUM_CHANNELS];
 
 static boolean use_sfx_prefix;
 
@@ -306,7 +302,7 @@ static void I_Virt_StopSound(int handle)
 
 static boolean I_Virt_SoundIsPlaying(int handle)
 {
-	printf("I_Virt_SoundIsPlaying: handle [%d]\n", handle);
+	//printf("I_Virt_SoundIsPlaying: handle [%d]\n", handle);
 	if (!sound_initialized || handle < 0 || handle >= NUM_CHANNELS)
 	{
 		return false;

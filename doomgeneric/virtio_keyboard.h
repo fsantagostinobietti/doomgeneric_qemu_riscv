@@ -26,4 +26,7 @@ int virtio_keyboard_init();
 
 struct virtio_input_event virtio_keyboard_read_event(void);
 
+// Device type for virtio-input (keyboard/mouse/etc)
+#define VIRTIO_DEVICE_ID_INPUT   18
+
 #endif
