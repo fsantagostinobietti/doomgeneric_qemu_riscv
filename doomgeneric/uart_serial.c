@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include "uart_serial.h"
+#include "doomtype.h"
 
 
 #define UART_BASE       0x10000000UL  // Adjust this to your actual UART base address
@@ -31,7 +32,7 @@ void uart_putchar(uint8_t ch) {
     mmio_write_char(UART_THR, ch);
 }
 
-bool uart_data_is_ready() {
+boolean uart_data_is_ready() {
     return ((mmio_read_char(UART_LSR) & UART_LSR_DR) != 0);
 }
 

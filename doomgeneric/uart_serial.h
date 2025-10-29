@@ -2,7 +2,6 @@
 #define UART_SERIAL
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <stdarg.h>
 #include <stddef.h>
 

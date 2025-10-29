@@ -35,6 +35,7 @@
 #include "z_zone.h"
 
 #include "doomtype.h"
+#include "virtio_sound.h"
 
 // audio clip
 struct audio_clip {
@@ -47,7 +48,7 @@ struct audio_clip {
 
 static boolean sound_initialized = false;
 
-static sfxinfo_t *channels_playing[NUM_CHANNELS];
+static sfxinfo_t *channels_playing[NUM_CHANNELS]; // really needed???
 
 static boolean use_sfx_prefix;
 
@@ -203,7 +204,7 @@ static void I_Virt_PrecacheSounds(sfxinfo_t *sounds, int num_sounds)
 
 static int I_Virt_GetSfxLumpNum(sfxinfo_t *sfx)
 {
-	printf("I_Virt_GetSfxLumpNum\n");
+	//printf("I_Virt_GetSfxLumpNum\n");
 	char namebuf[9];
 
 	GetSfxLumpName(sfx, namebuf, sizeof(namebuf));
@@ -219,19 +220,16 @@ static int I_Virt_GetSfxLumpNum(sfxinfo_t *sfx)
 
 static void I_Virt_UpdateSoundParams(int handle, int vol, int sep)
 {
-	printf("I_Virt_UpdateSoundParams: handle [%d], vol [%d], sep [%d]\n", handle, vol, sep);
-	int left, right;
+	//printf("I_Virt_UpdateSoundParams: handle [%d], vol [%d], sep [%d]\n", handle, vol, sep);
 
 	if (!sound_initialized || handle < 0 || handle >= NUM_CHANNELS)
-	{
 		return;
-	}
 
-	if (channels_playing[handle] == NULL) {
+	if (channels_playing[handle] == NULL)
 		return;
-	}
 
-	// TODO sett volume and pan (i.e. sep)
+	// set volume and pan (i.e. sep)
+	virtio_snd_update_params(handle, vol, sep);
 }
 
 //
@@ -249,16 +247,14 @@ static void I_Virt_UpdateSoundParams(int handle, int vol, int sep)
 
 static int I_Virt_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep)
 {
-	printf("I_Virt_StartSound: name [%s], driver_data [%p], channel [%d], vol [%d], sep [%d]\n", sfxinfo->name, sfxinfo->driver_data, channel, vol, sep);
+	//printf("I_Virt_StartSound: name [%s], driver_data [%p], channel [%d], vol [%d], sep [%d]\n", sfxinfo->name, sfxinfo->driver_data, channel, vol, sep);
 	if (!sound_initialized || channel < 0 || channel >= NUM_CHANNELS)
-	{
 		return -1;
-	}
 
 	// Release a sound effect if there is already one playing
 	// on this channel
 	if (channels_playing[channel]) {
-		// TODO
+		virtio_snd_stop(channel);
 		channels_playing[channel] = NULL;
 	}
 
@@ -266,15 +262,14 @@ static int I_Virt_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep)
 	if (sfxinfo->driver_data == NULL)
 	{
 		if (!CacheSFX(sfxinfo))
-		{
 			return -1;
-		}
 	}
 	//assert(sfxinfo->driver_data);
-	printf("I_Virt_StartSound: name [%s], pcm addr [%p]\n", sfxinfo->name, ((struct audio_clip*)sfxinfo->driver_data)->pcm);
+	//printf("I_Virt_StartSound: name [%s], pcm addr [%p]\n", sfxinfo->name, ((struct audio_clip*)sfxinfo->driver_data)->pcm);
 	
 	// play sound
-	// TODO
+	struct audio_clip* audio = (struct audio_clip*)sfxinfo->driver_data;
+	virtio_snd_start(audio->pcm, audio->pcm_sz, channel, vol, sep);
 
 	channels_playing[channel] = sfxinfo;
 
@@ -284,18 +279,14 @@ static int I_Virt_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep)
 
 static void I_Virt_StopSound(int handle)
 {
-	printf("I_Virt_StopSound: handle [%d]\n", handle);
+	//printf("I_Virt_StopSound: handle [%d]\n", handle);
 	if (!sound_initialized || handle < 0 || handle >= NUM_CHANNELS)
-	{
 		return;
-	}
 
-	if (channels_playing[handle] == NULL) {
+	if (channels_playing[handle] == NULL)
 		return;
-	}
 
-	// TODO
-
+	virtio_snd_stop(handle);
 	channels_playing[handle] = NULL;
 }
 
@@ -304,18 +295,16 @@ static boolean I_Virt_SoundIsPlaying(int handle)
 {
 	//printf("I_Virt_SoundIsPlaying: handle [%d]\n", handle);
 	if (!sound_initialized || handle < 0 || handle >= NUM_CHANNELS)
-	{
 		return false;
-	}
 
-	if (channels_playing[handle] == NULL) {
+	if (channels_playing[handle] == NULL)
 		return false;
-	}
 
-	// TODO
+	boolean is_playing = virtio_snd_channel_is_playing(handle);
+	if (!is_playing)
+		channels_playing[handle] = NULL;
 
-	// still playing
-	return true;
+	return is_playing;
 }
 
 // 
@@ -340,7 +329,7 @@ static void I_Virt_UpdateSound(void)
 
 static void I_Virt_ShutdownSound(void)
 {
-	printf("I_Virt_ShutdownSound\n");
+	//printf("I_Virt_ShutdownSound\n");
 	if (!sound_initialized)
 	{
 		return;
@@ -354,20 +343,19 @@ static void I_Virt_ShutdownSound(void)
 
 static boolean I_Virt_InitSound(boolean _use_sfx_prefix)
 {
-	printf("I_Virt_InitSound: _use_sfx_prefix [%d]\n", _use_sfx_prefix);
-	int i;
-
+	//printf("I_Virt_InitSound: _use_sfx_prefix [%d]\n", _use_sfx_prefix);
     use_sfx_prefix = _use_sfx_prefix;
 
+	int i;
     // No sounds yet
-
     for (i=0; i<NUM_CHANNELS; ++i)
-    {
         channels_playing[i] = NULL;
-    }
 
-	// TODO 
-
+	int res =  virtio_snd_init();
+	if (res < 0) {
+		printf("I_Virt_InitSound: ERR sound init failed with code [%d]\n", res);
+		return false;
+	}
 	sound_initialized = true;
 
 	return true;
