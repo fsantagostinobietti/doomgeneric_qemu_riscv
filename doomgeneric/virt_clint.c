@@ -2,6 +2,8 @@
 #include "virt_clint.h"
 #include "uart_serial.h"
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
 // inline asm in C language
 // see https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
 // and https://gcc.gnu.org/onlinedocs/gcc/Simple-Constraints.html
@@ -38,6 +40,24 @@ uint64_t read_mtimecmp() {
 void write_mtimecmp(uint64_t time) {
     volatile uint64_t* mtimecmp = (uint64_t*)CLINT_MTIMECMP;
     *mtimecmp = time;
+}
+
+// Set 'time' when timer will trigger interrupt
+void write_mtimecmp_safe(uint64_t time) {
+    volatile uint32_t* mtimecmp_lo = (uint32_t*)CLINT_MTIMECMP;
+    volatile uint32_t* mtimecmp_hi = mtimecmp_lo + 1;
+
+    // make it far in the future to avoid transient early compare
+    *mtimecmp_hi = 0xFFFFFFFFu;      // temp high
+    *mtimecmp_lo = 0xFFFFFFFFu;      // temp low
+
+
+    // program target value atomically-ish: hi first, then low
+    *mtimecmp_hi = (uint32_t)(time >> 32);
+    *mtimecmp_lo = (uint32_t)(time & 0xFFFFFFFFu);
+
+    // Ensure stores reach CLINT before WFI
+    __asm__ volatile("fence rw, rw" ::: "memory");
 }
 
 #define MIE_MTIE      (1 << 7)  // Machine-mode Timer Interrupt Enable Flag
@@ -95,11 +115,23 @@ int init_interrupts() {
 // sleep execution for specified number of microseconds
 void sleep_us(uint64_t us) {
     //kprintf("sleep_us(): us [%d]\n", us);
+
+    // values lower than 5 ms can occasionally trigger interrupt too early for 
+    // 'wfi' instruction to catch it
+    us = max(us, 10000);
+
+    //kprintf("sleep_us: us [%d] [", us);
+
     uint64_t now = read_mtime();
     uint64_t target = now + (us * (MTIME_FREQ/1000000));
-    write_mtimecmp(target);
+    write_mtimecmp_safe(target);
     
     enable_timer_interrupt();
+    __asm__ volatile("fence iorw, iorw" ::: "memory"); // conservative barrier
 
-    asm volatile("wfi");    // interrupt controlled waiting (Wait For Interrupt)
+    while ((int64_t)(read_mtime() - target) < 0) {
+        //kprintf(".");
+        asm volatile("wfi");    // interrupt controlled waiting (Wait For Interrupt)
+    }
+    //kprintf("]\n");
 }

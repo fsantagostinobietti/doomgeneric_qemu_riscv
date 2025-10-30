@@ -384,7 +384,7 @@ static uint8_t next_chunk_idx = 0;
 
 
 boolean virtio_snd_channel_is_playing(const int8_t ch) {
-    kprintf("virtio_snd_channel_is_playing: ch [%d]\n", ch);
+    //kprintf("virtio_snd_channel_is_playing: ch [%d]\n", ch);
     if (ch<0 || ch>=NUM_CHANNELS)   // invalid channel
         return false;
     return channels[ch].in_use;

@@ -316,7 +316,9 @@ void D_Display (void)
 	{
 	    nowtime = I_GetTime ();
 	    tics = nowtime - wipestart;
-            I_Sleep(1);
+        // ms value can be computed starting from tics
+        int ms = (tics * 1000) / TICRATE;
+            I_Sleep(ms);  
 	} while (tics <= 0);
         
 	wipestart = nowtime;
