@@ -278,7 +278,7 @@ int virtio_snd_read_used() {
         snd_tx_desc_in_use[desc_idx] = snd_tx_desc_in_use[desc_idx+1] = snd_tx_desc_in_use[desc_idx+2] = 0;
 
         snd_tx_used_idx++;
-        return (p_xfer_st->status == VIRTIO_SND_S_OK)? snd_tx_desc[desc_idx+1].len : - p_xfer_st->status;
+        return (p_xfer_st->status == VIRTIO_SND_S_OK)? 1 : - p_xfer_st->status;
     }
     return 0; // no used entry
 }
@@ -342,7 +342,8 @@ uint8_t virtio_snd_playing_chunks_count() {
 
 #define NUM_CHANNELS 8
 struct audio_channel {
-    boolean in_use;
+    boolean ready;  // ready to be played
+    boolean playing;    // actually playing
     const uint8_t* pcm; // address
     uint32_t pcm_sz;  // size in bytes
     uint8_t vol;    // volume [0, 127]
@@ -355,17 +356,21 @@ static struct audio_channel channels[NUM_CHANNELS];
 int virtio_snd_start(const uint8_t* audio_pcm, const uint32_t audio_pcm_sz, const int8_t ch, const uint8_t vol, const uint8_t sep) {
     if (ch<0 || ch>=NUM_CHANNELS)   // invalid channel
         return -1;
+    kprintf("virtio_snd_start: ch [%d], audio size [%d]\n", ch, audio_pcm_sz);
     channels[ch].pcm = audio_pcm;
     channels[ch].pcm_sz = audio_pcm_sz;
     channels[ch].vol = vol;
     channels[ch].sep = sep;
-    channels[ch].in_use = true;
+    channels[ch].ready = true;
+    channels[ch].playing = false;
     return 0;
 }
 
 void virtio_snd_stop(const int8_t ch) {
-    if (ch>=0 && ch<NUM_CHANNELS)
-        channels[ch].in_use = false;
+    if (ch>=0 && ch<NUM_CHANNELS) {
+        channels[ch].ready = false;
+        channels[ch].playing = false;
+    }
 }
 
 void virtio_snd_update_params(const int8_t ch, const uint8_t vol, const uint8_t sep) {
@@ -378,29 +383,42 @@ void virtio_snd_update_params(const int8_t ch, const uint8_t vol, const uint8_t 
 // size of chunk buffer
 #define NUM_CHUNKS 2
 // num_channels * (samples in a second / num chunks per second)
-#define CHUNK_SZ (2  * (AUDIO_RATE  / 35))
+#define CHUNK_SZ (2  * (AUDIO_RATE  / 25))
 static uint8_t chunk_buffer[NUM_CHUNKS][CHUNK_SZ];
 static uint8_t next_chunk_idx = 0;
 
+static volatile boolean pre_buffering = true;
 
 boolean virtio_snd_channel_is_playing(const int8_t ch) {
     //kprintf("virtio_snd_channel_is_playing: ch [%d]\n", ch);
     if (ch<0 || ch>=NUM_CHANNELS)   // invalid channel
         return false;
-    return channels[ch].in_use;
+    return channels[ch].ready; // even if not yet playing
 }
 
 // at least one audio channel is in use
 boolean audio_channels_in_use() {
     for (int i=0; i < NUM_CHANNELS ; ++i)
-        if (channels[i].in_use)
+        if (channels[i].ready) {
+            //kprintf("audio_channels_in_use: == true, ch [%d]\n", i);
             return true;
+        }
+    // no audio to play
+    /* if (!pre_buffering)
+        kprintf("audio_channels_in_use: set pre_buffering = true\n"); */
+    pre_buffering = true;
     return false;
 }
 
 boolean chunk_buffer_is_full() {
     uint8_t count = virtio_snd_playing_chunks_count();
-    if (count==0) kprintf("chunk_buffer_is_full: WARN - audio underrun!!!\n");
+
+    if (!pre_buffering && count==0) kprintf("chunk_buffer_is_full: WARN - audio underrun!!!\n");
+    if ( count >= NUM_CHUNKS ) {
+        /* if (pre_buffering)
+            kprintf("chunk_buffer_is_full: set pre_buffering = false\n"); */
+        pre_buffering = false;
+    }
     return ( count >= NUM_CHUNKS ) ?true :false;
 }
 
@@ -412,12 +430,12 @@ void mix_channels_audio_chunk(uint8_t* out_chunk) {
     // clear temp buffer
     memset(tmp, 0, sizeof(tmp));
     for (int ch=0; ch < NUM_CHANNELS ; ++ch) {
-        if (channels[ch].in_use) {
+        if (channels[ch].ready) {
             int sz = min(CHUNK_SZ, channels[ch].pcm_sz);
-            sz &= ~1;   // ensure even size (stereo)
             const int l_gain = channels[ch].vol * channels[ch].sep;
             const int r_gain = channels[ch].vol * (254 - channels[ch].sep);
-            for (int i=0; i < sz ; i+=2) {
+            int sz_even = sz & ~1;   // ensure even size (stereo)
+            for (int i=0; i < sz_even ; i+=2) {
                 // simple mixing: sum all channels samples (with volume adjustment and stereo sepration)
                 // left channel
                 tmp[i+0] += ((int)channels[ch].pcm[i+0] - 128) * l_gain;
@@ -425,13 +443,15 @@ void mix_channels_audio_chunk(uint8_t* out_chunk) {
                 tmp[i+1] += ((int)channels[ch].pcm[i+1] - 128) * r_gain;
             }
             // update audio data in channels
-            if (channels[ch].pcm_sz > CHUNK_SZ) {
-                channels[ch].pcm += CHUNK_SZ;
-                channels[ch].pcm_sz -= CHUNK_SZ;
+            if (channels[ch].pcm_sz > sz) {
+                channels[ch].pcm += sz;
+                channels[ch].pcm_sz -= sz;
+                //kprintf("mix_channels_audio_chunk: channels[%d] remain [%d] bytes\n", ch, channels[ch].pcm_sz);
             } else {
+                //kprintf("mix_channels_audio_chunk: channels[%d] finished\n", ch);
                 channels[ch].pcm = NULL;
                 channels[ch].pcm_sz = 0;
-                channels[ch].in_use = false;
+                channels[ch].ready = false;
             }
         }
     }
@@ -449,7 +469,9 @@ void mix_channels_audio_chunk(uint8_t* out_chunk) {
 int virtio_snd_update() {
     int res;
     // check if a previously sent chunk had been consumed
-    while ( (res = virtio_snd_read_used()) > 0 ) {}
+    while ( (res = virtio_snd_read_used()) > 0 ) {
+        //kprintf("*\n");
+    }
     if (res < 0) // error
         return res;
 
@@ -463,6 +485,7 @@ int virtio_snd_update() {
         mix_channels_audio_chunk(mixed_chunk);
         // send chunk to virtio sound device
         res = virtio_snd_write(dev_idx, mixed_chunk, CHUNK_SZ);
+        //kprintf(".\n");
         if (res < 0) // error
             return res;
     }

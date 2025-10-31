@@ -301,8 +301,8 @@ static boolean I_Virt_SoundIsPlaying(int handle)
 		return false;
 
 	boolean is_playing = virtio_snd_channel_is_playing(handle);
-	if (!is_playing)
-		channels_playing[handle] = NULL;
+	/* if (!is_playing)
+		channels_playing[handle] = NULL; */
 
 	return is_playing;
 }
@@ -314,12 +314,13 @@ static boolean I_Virt_SoundIsPlaying(int handle)
 static void I_Virt_UpdateSound(void)
 {
 	//printf("I_Virt_UpdateSound\n");
-	int i;
+	int res = virtio_snd_update();
+	if (res<0)
+		printf("I_Virt_UpdateSound: ERR with code [%d]\n", res);
 
 	// loop through all channels which have sample, check if they're finished
-	for (i = 0; i < NUM_CHANNELS; i++) {
-		if (channels_playing[i] && !I_Virt_SoundIsPlaying(i)) {
-			// TODO 
+	for (int i = 0; i < NUM_CHANNELS; i++) {
+		if (!I_Virt_SoundIsPlaying(i)) {
 			// finished
 			channels_playing[i] = NULL;
 		}
