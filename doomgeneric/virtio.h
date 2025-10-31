@@ -74,7 +74,7 @@ enum {
 
 
 // Virtqueue constants
-#define QUEUE_SIZE 8
+#define QUEUE_SIZE 9
 
 // Descriptor flags
 #define VIRTQ_DESC_F_NEXT  1    // buffer continues via the 'next' field

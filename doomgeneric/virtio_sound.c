@@ -342,8 +342,7 @@ uint8_t virtio_snd_playing_chunks_count() {
 
 #define NUM_CHANNELS 8
 struct audio_channel {
-    boolean ready;  // ready to be played
-    boolean playing;    // actually playing
+    boolean in_use;
     const uint8_t* pcm; // address
     uint32_t pcm_sz;  // size in bytes
     uint8_t vol;    // volume [0, 127]
@@ -361,15 +360,13 @@ int virtio_snd_start(const uint8_t* audio_pcm, const uint32_t audio_pcm_sz, cons
     channels[ch].pcm_sz = audio_pcm_sz;
     channels[ch].vol = vol;
     channels[ch].sep = sep;
-    channels[ch].ready = true;
-    channels[ch].playing = false;
+    channels[ch].in_use = true;
     return 0;
 }
 
 void virtio_snd_stop(const int8_t ch) {
     if (ch>=0 && ch<NUM_CHANNELS) {
-        channels[ch].ready = false;
-        channels[ch].playing = false;
+        channels[ch].in_use = false;
     }
 }
 
@@ -381,25 +378,25 @@ void virtio_snd_update_params(const int8_t ch, const uint8_t vol, const uint8_t 
 }
 
 // size of chunk buffer
-#define NUM_CHUNKS 2
+#define NUM_CHUNKS (QUEUE_SIZE / 3)
 // num_channels * (samples in a second / num chunks per second)
-#define CHUNK_SZ (2  * (AUDIO_RATE  / 25))
+#define CHUNK_SZ (2  * (AUDIO_RATE  / 35))
 static uint8_t chunk_buffer[NUM_CHUNKS][CHUNK_SZ];
 static uint8_t next_chunk_idx = 0;
 
-static volatile boolean pre_buffering = true;
+static boolean pre_buffering = true;
 
 boolean virtio_snd_channel_is_playing(const int8_t ch) {
     //kprintf("virtio_snd_channel_is_playing: ch [%d]\n", ch);
     if (ch<0 || ch>=NUM_CHANNELS)   // invalid channel
         return false;
-    return channels[ch].ready; // even if not yet playing
+    return channels[ch].in_use; // even if not yet playing
 }
 
 // at least one audio channel is in use
 boolean audio_channels_in_use() {
     for (int i=0; i < NUM_CHANNELS ; ++i)
-        if (channels[i].ready) {
+        if (channels[i].in_use) {
             //kprintf("audio_channels_in_use: == true, ch [%d]\n", i);
             return true;
         }
@@ -430,7 +427,7 @@ void mix_channels_audio_chunk(uint8_t* out_chunk) {
     // clear temp buffer
     memset(tmp, 0, sizeof(tmp));
     for (int ch=0; ch < NUM_CHANNELS ; ++ch) {
-        if (channels[ch].ready) {
+        if (channels[ch].in_use) {
             int sz = min(CHUNK_SZ, channels[ch].pcm_sz);
             const int l_gain = channels[ch].vol * channels[ch].sep;
             const int r_gain = channels[ch].vol * (254 - channels[ch].sep);
@@ -451,7 +448,7 @@ void mix_channels_audio_chunk(uint8_t* out_chunk) {
                 //kprintf("mix_channels_audio_chunk: channels[%d] finished\n", ch);
                 channels[ch].pcm = NULL;
                 channels[ch].pcm_sz = 0;
-                channels[ch].ready = false;
+                channels[ch].in_use = false;
             }
         }
     }
