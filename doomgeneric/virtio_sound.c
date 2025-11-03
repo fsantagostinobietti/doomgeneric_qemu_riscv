@@ -343,7 +343,7 @@ uint8_t virtio_snd_playing_chunks_count() {
 #define NUM_CHANNELS 8
 struct audio_channel {
     boolean in_use;
-    const uint8_t* pcm; // address
+    const uint8_t* pcm; // audio data in PCM format (unsigned 8-bit, mono, 11025 Hz)
     uint32_t pcm_sz;  // size in bytes
     uint8_t vol;    // volume [0, 127]
     uint8_t sep;    // stereo separation [0, 254], 0=left only, 127=center, 254=right only
@@ -352,6 +352,7 @@ static struct audio_channel channels[NUM_CHANNELS];
 
 
 // Add audio clip to be played immediately
+// Audio data in PCM format (unsigned 8-bit, mono, 11025 Hz)
 int virtio_snd_start(const uint8_t* audio_pcm, const uint32_t audio_pcm_sz, const int8_t ch, const uint8_t vol, const uint8_t sep) {
     if (ch<0 || ch>=NUM_CHANNELS)   // invalid channel
         return -1;
@@ -379,8 +380,9 @@ void virtio_snd_update_params(const int8_t ch, const uint8_t vol, const uint8_t 
 // size of chunk buffer
 #define NUM_CHUNKS (QUEUE_SIZE / 3)
 // num_channels * (samples in a second / num chunks per second)
-#define CHUNK_SZ (2  * (AUDIO_RATE  / 35))
-static uint8_t chunk_buffer[NUM_CHUNKS][CHUNK_SZ];
+#define MONO_CHUNK_SZ (AUDIO_RATE / 35)
+#define STEREO_CHUNK_SZ (2 * MONO_CHUNK_SZ)
+static uint8_t chunk_buffer[NUM_CHUNKS][STEREO_CHUNK_SZ];
 static uint8_t next_chunk_idx = 0;
 
 static boolean pre_buffering = true;
@@ -422,21 +424,20 @@ boolean chunk_buffer_is_full() {
 // adding values computed with : value * (vol/127) * (sep/127)
 void mix_channels_audio_chunk(uint8_t* out_chunk) {
     // proper mixing of all in-use channels
-    int tmp[CHUNK_SZ];
+    int tmp[STEREO_CHUNK_SZ];
     // clear temp buffer
     memset(tmp, 0, sizeof(tmp));
     for (int ch=0; ch < NUM_CHANNELS ; ++ch) {
         if (channels[ch].in_use) {
-            int sz = min(CHUNK_SZ, channels[ch].pcm_sz);
+            int sz = min(MONO_CHUNK_SZ, channels[ch].pcm_sz);
             const int l_gain = channels[ch].vol * channels[ch].sep;
             const int r_gain = channels[ch].vol * (254 - channels[ch].sep);
-            int sz_even = sz & ~1;   // ensure even size (stereo)
-            for (int i=0; i < sz_even ; i+=2) {
+            for (int i=0; i < sz ; i++) {
                 // simple mixing: sum all channels samples (with volume adjustment and stereo sepration)
                 // left channel
-                tmp[i+0] += ((int)channels[ch].pcm[i+0] - 128) * l_gain;
+                tmp[2*i+0] += ((int)channels[ch].pcm[i+0] - 128) * l_gain;
                 // right channel
-                tmp[i+1] += ((int)channels[ch].pcm[i+1] - 128) * r_gain;
+                tmp[2*i+1] += ((int)channels[ch].pcm[i+1] - 128) * r_gain;
             }
             // update audio data in channels
             if (channels[ch].pcm_sz > sz) {
@@ -452,7 +453,7 @@ void mix_channels_audio_chunk(uint8_t* out_chunk) {
         }
     }
     // clamp mixed samples and write to output chunk
-    for (int i=0; i < CHUNK_SZ ; ++i) {
+    for (int i=0; i < STEREO_CHUNK_SZ ; ++i) {
         tmp[i] /= 127 * 127;    // modulation
         tmp[i] = max(tmp[i], -128);
         tmp[i] = min(tmp[i],  127);
@@ -480,7 +481,7 @@ int virtio_snd_update() {
         // compute audio chunk mixing properly audio chunks from channels 
         mix_channels_audio_chunk(mixed_chunk);
         // send chunk to virtio sound device
-        res = virtio_snd_write(dev_idx, mixed_chunk, CHUNK_SZ);
+        res = virtio_snd_write(dev_idx, mixed_chunk, STEREO_CHUNK_SZ);
         //kprintf(".\n");
         if (res < 0) // error
             return res;
