@@ -14,6 +14,7 @@ In order to interact with virt machine simple drivers have been developed for:
 * CLINT mtime - read/write register that counts the number of cycles from the realtime clock
 * CLINT interrupt - allows to implement sleep(ms) function without consuming 100% of cpu cycles
 * Virtio Keyboard - read key pressed/released 
+* Virtio Sound - sound effects playback
 
 # Build
 A cross-compiler for the RISC-V architecture is required.
@@ -28,6 +29,7 @@ $ brew install riscv64-elf-gdb
 
 To build unikernel executable:
 ```shell
+$ cd doomgeneric
 $ make
 ```
 # Running Doom
@@ -35,6 +37,8 @@ QEMU emulator is needed. On macOS, install it via:
 ```shell
 $ brew install qemu
 ```
+
+NB: See [here](Qemu_custom_build.md) if you need to build Qemu from sources.
 
 To run Doom on QEMU:
 ```shell
@@ -46,9 +50,10 @@ $ bash qemu-run.sh
 
 
 # Limitations
-* no audio is supported
+* no music (only sound effects are supported)
+* ~~no audio is supported~~
 * ~~Game uses 100% of Qemu cpu~~
 
 # TODOs
 * code refactoring
-* add audio support (they say it's hard to implement)
+* ~~add audio support (they say it's hard to implement)~~
