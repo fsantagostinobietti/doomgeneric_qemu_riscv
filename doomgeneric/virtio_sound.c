@@ -355,7 +355,6 @@ static struct audio_channel channels[NUM_CHANNELS];
 int virtio_snd_start(const uint8_t* audio_pcm, const uint32_t audio_pcm_sz, const int8_t ch, const uint8_t vol, const uint8_t sep) {
     if (ch<0 || ch>=NUM_CHANNELS)   // invalid channel
         return -1;
-    kprintf("virtio_snd_start: ch [%d], audio size [%d]\n", ch, audio_pcm_sz);
     channels[ch].pcm = audio_pcm;
     channels[ch].pcm_sz = audio_pcm_sz;
     channels[ch].vol = vol;

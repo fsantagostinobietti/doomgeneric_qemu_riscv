@@ -141,19 +141,11 @@ static boolean CacheSFX(sfxinfo_t *sfxinfo)
 	data += 16;
 	length -= 32;
 
-	// Debug only
+	/* // Debug only
 	char namebuf[9];
 	GetSfxLumpName(sfxinfo, namebuf, sizeof(namebuf));
-	printf("CacheSFX: sfx [%s], samplerate [%d], length [%d]\n", namebuf, samplerate, length);
-	/* if (strcasecmp(namebuf, "dsshotgn")==0) {
-		for (int i=0; i<length ;++i)
-			printf("0x%x, ", data[i]);
-		printf("\n");
-	} */
+	printf("CacheSFX: sfx [%s], samplerate [%d], length [%d]\n", namebuf, samplerate, length); */
 
-	// TODO
-	// memcpy(sample->data, data, length);
-	//  sfxinfo->driver_data = sample;
 	struct audio_clip* audio = malloc(sizeof(struct audio_clip));
 	audio->pcm = data;
 	audio->pcm_sz = length;
@@ -265,10 +257,10 @@ static int I_Virt_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep)
 			return -1;
 	}
 	//assert(sfxinfo->driver_data);
-	//printf("I_Virt_StartSound: name [%s], pcm addr [%p]\n", sfxinfo->name, ((struct audio_clip*)sfxinfo->driver_data)->pcm);
 	
 	// play sound
 	struct audio_clip* audio = (struct audio_clip*)sfxinfo->driver_data;
+	//printf("I_Virt_StartSound: name [%s],\t audio size [%d],\t channel [%d]\n", sfxinfo->name, audio->pcm_sz, channel);
 	virtio_snd_start(audio->pcm, audio->pcm_sz, channel, vol, sep);
 
 	channels_playing[channel] = sfxinfo;

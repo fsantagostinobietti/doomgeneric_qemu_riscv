@@ -200,12 +200,12 @@ void free(void *ptr) {
 void *malloc(size_t size) {
     void *addr = (void*) heap_start;
     heap_start += size;
-    printf("malloc: addr [%p], size [%d]\n", addr, size);
+    //printf("malloc: addr [%p], size [%d]\n", addr, size);
     return addr;
 }
 
 void *realloc(void *memblock, size_t size) {
-    printf("realloc\n");
+    //printf("realloc\n");
     if (memblock == NULL) {
         // Equivalent to malloc
         return malloc(size);
@@ -239,7 +239,7 @@ void *realloc(void *memblock, size_t size) {
 
 
 void *calloc(size_t number, size_t size) {
-    printf("calloc\n");
+    //printf("calloc\n");
     size_t total = number * size;
     void *ptr = malloc(total);
     if (!ptr) {
