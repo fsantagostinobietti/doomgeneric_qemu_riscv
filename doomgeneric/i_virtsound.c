@@ -33,7 +33,7 @@
 #include "m_misc.h"
 #include "w_wad.h"
 #include "z_zone.h"
-
+#include "i_timer.h"
 #include "doomtype.h"
 #include "virtio_sound.h"
 
@@ -324,11 +324,17 @@ static void I_Virt_ShutdownSound(void)
 {
 	//printf("I_Virt_ShutdownSound\n");
 	if (!sound_initialized)
-	{
 		return;
+
+	// wait for all sounds to complete 
+	for (int ch = 0; ch < NUM_CHANNELS; ch++) {
+		while (I_Virt_SoundIsPlaying(ch)) {
+			I_Sleep(20);
+			I_Virt_UpdateSound();
+		}
 	}
 
-	// TODO
+	// TODO shutdown virtio sound
 
 	sound_initialized = false;
 }
