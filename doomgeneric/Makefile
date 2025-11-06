@@ -11,9 +11,9 @@ else
 	VB=@
 endif
 
-
-CC=riscv64-elf-gcc  # gcc or g++
-OBJCOPY=riscv64-elf-objcopy
+TOOLCHAIN_PREFIX ?= riscv64-elf-
+CC=$(TOOLCHAIN_PREFIX)gcc  # gcc or g++
+OBJCOPY=$(TOOLCHAIN_PREFIX)objcopy
 INCLUDES=libc/include/
 # -std=c99 
 CFLAGS=-ffreestanding -nostartfiles -nostdlib -nodefaultlibs
